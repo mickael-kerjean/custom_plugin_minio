@@ -1,0 +1,13 @@
+{
+    "general": {
+        "editor": "base",
+        "fork_button": false,
+        "upload_button": true,
+    },
+    "connections": [
+        {
+            "label": "SG",
+            "type": "sg"
+        }
+    ]
+}
