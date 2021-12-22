@@ -1,4 +1,4 @@
-package plg_backend_sg
+package plg_backend_s3sts
 
 import (
 	"context"
@@ -25,10 +25,11 @@ func init() {
 	VALID_SESSION_TIMEOUT = 3600 * 12 // 1 working day
 	openIDConfig()
 	openIDClientID()
+	openIDClientSecret()
 }
 
 var openIDConfig = func() string {
-	return Config.Get("sg.openid.configuration").Schema(func(f *FormElement) *FormElement {
+	return Config.Get("s3sts.openid.configuration").Schema(func(f *FormElement) *FormElement {
 		if f == nil {
 			f = &FormElement{}
 		}
@@ -41,7 +42,7 @@ var openIDConfig = func() string {
 }
 
 var openIDClientID = func() string {
-	return Config.Get("sg.openid.client_id").Schema(func(f *FormElement) *FormElement {
+	return Config.Get("s3sts.openid.client_id").Schema(func(f *FormElement) *FormElement {
 		if f == nil {
 			f = &FormElement{}
 		}
@@ -53,10 +54,24 @@ var openIDClientID = func() string {
 	}).String()
 }
 
+var openIDClientSecret = func() string {
+	return Config.Get("s3sts.openid.client_secret").Schema(func(f *FormElement) *FormElement {
+		if f == nil {
+			f = &FormElement{}
+		}
+		f.Default = ""
+		f.Name = "client_secret"
+		f.Type = "text"
+		f.Placeholder = "client_secret"
+		return f
+	}).String()
+}
+
 func OpenID() *oauth2.Config {
 	return &oauth2.Config{
-		RedirectURL: fmt.Sprintf("http://%s/login", Config.Get("general.host").String()),
-		ClientID:    openIDClientID(),
+		RedirectURL:  fmt.Sprintf("https://%s/login", Config.Get("general.host").String()),
+		ClientID:     openIDClientID(),
+		ClientSecret: openIDClientSecret(),
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  OpenIDAuthenticationEndpoint,
 			TokenURL: OpenIDTokenEndpoint,
@@ -68,17 +83,17 @@ func OpenIDGetURL() string {
 	req, err := http.NewRequest("GET", openIDConfig(), nil)
 	if err != nil {
 		Log.Error("oauth2::http::new %+v", err)
-		return OpenID().AuthCodeURL("sg")
+		return OpenID().AuthCodeURL("s3sts")
 	}
 	resp, err := HTTPClient.Do(req)
 	if err != nil {
 		Log.Error("oauth2::http::do %+v", err)
-		return OpenID().AuthCodeURL("sg")
+		return OpenID().AuthCodeURL("s3sts")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		Log.Error("oauth2::http::status %d", resp.StatusCode)
-		return OpenID().AuthCodeURL("sg")
+		return OpenID().AuthCodeURL("s3sts")
 	}
 	dec := json.NewDecoder(resp.Body)
 	d := struct {
@@ -88,12 +103,12 @@ func OpenIDGetURL() string {
 	}{}
 	if err = dec.Decode(&d); err != nil {
 		Log.Error("oauth2::http::decode %+v", err)
-		return OpenID().AuthCodeURL("sg")
+		return OpenID().AuthCodeURL("s3sts")
 	}
 	OpenIDAuthenticationEndpoint = d.AuthEndpoint
 	OpenIDTokenEndpoint = d.TokenEndpoint
 	OpenIDUserInfoEndpoint = d.UserInfoEndpoint
-	url := OpenID().AuthCodeURL("sg") + "&nonce=" + OpenIDCreateNonce()
+	url := OpenID().AuthCodeURL("s3sts") + "&nonce=" + OpenIDCreateNonce()
 	Log.Info("oauth2 - url[%s]", url)
 	return url
 }
