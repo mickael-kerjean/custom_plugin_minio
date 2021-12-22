@@ -1,25 +1,92 @@
 version: '2'
 services:
-  storage:
-    container_name: minio
-    image: minio/minio
+  postgres:
+    image: postgres
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d/
     environment:
-    - MINIO_ROOT_USER=Q3AM3UQ867SPQQA43P2F
-    - MINIO_ROOT_PASSWORD=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
-    # - MINIO_IDENTITY_OPENID_CONFIG_URL=http://keycloak:8080/auth/realms/filestash/.well-known/openid-configuration
-    # - MINIO_IDENTITY_OPENID_REDIRECT_URI=http://127.0.0.1:9001/oauth_callback
-    # - MINIO_IDENTITY_OPENID_CLIENT_ID=filestash
-    command: server /data --console-address ":9001"
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
     ports:
-    - 9000:9000
-    - 9001:9001
+      - 5432:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
     volumes:
-    - ./volumes/minio:/data
-    
-  auth:
-    container_name: keycloak
-    image: jboss/keycloak
-    volumes:
-    - ./volumes/keycloak/:/opt/jboss/keycloak/standalone/data/
+      - ./keycloak_imports:/opt/jboss/keycloak/imports
+    environment:
+      DB_VENDOR: POSTGRES
+      DB_ADDR: postgres
+      DB_DATABASE: keycloak
+      DB_USER: keycloak
+      DB_SCHEMA: public
+      DB_PASSWORD: password
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
     ports:
-    - 8080:8080
+      - 8080:8080
+    command: "-b 0.0.0.0 -Dkeycloak.import=/opt/jboss/keycloak/imports/minio-export.json -Dkeycloak.profile=preview -Dkeycloak.profile.feature.upload_scripts=enabled"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:8080/auth/realms/master"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  etcd:
+    image: gcr.io/etcd-development/etcd:v3.3.9
+    volumes:
+      - ./etcd-data.tmp:/etcd-data
+    ports:
+      - 2379:2379
+      - 2380:2380
+    command: "/usr/local/bin/etcd --name s1 --data-dir /etcd-data --listen-client-urls http://0.0.0.0:2379 --advertise-client-urls http://0.0.0.0:2379 --listen-peer-urls http://0.0.0.0:2380 --initial-advertise-peer-urls http://0.0.0.0:2380 --initial-cluster s1=http://0.0.0.0:2380 --initial-cluster-token tkn --initial-cluster-state new"
+    healthcheck:
+      test: ["CMD-SHELL", "ETCDCTL_API=3 etcdctl --endpoints=http://localhost:2379 endpoint health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio
+    volumes:
+      - ./minio_data:/data
+    ports:
+      - 9000:9000
+      - 9001:9001
+    environment:
+      MINIO_ETCD_ENDPOINTS: http://etcd:2379
+      MINIO_ROOT_USER: Q3AM3UQ867SPQQA43P2F
+      MINIO_ROOT_PASSWORD: zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
+      MINIO_IDENTITY_OPENID_CONFIG_URL: http://172.17.0.1:8080/auth/realms/application/.well-known/openid-configuration
+      MINIO_IDENTITY_OPENID_CLIENT_ID: minioclient
+      MINIO_IDENTITY_OPENID_SCOPES: "openid,email"
+    command: "gateway nas /data --address :9000 --console-address :9001"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      etcd:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ignore self-signed ssl
+  onlyoffice:
+    container_name: filestash_oods
+    image: onlyoffice/documentserver
+    restart: always
+    ports:
+      - 8000:80
+    entrypoint: /bin/bash -c "/var/www/onlyoffice/documentserver/npm/json -f /etc/onlyoffice/documentserver/default.json -I -e 'this.services.CoAuthoring.requestDefaults.rejectUnauthorized=false' && /app/ds/run-document-server.sh"
