@@ -4,7 +4,8 @@ set -e
 ###################
 # CUSTOM CODE
 git clone --depth 1 https://github.com/mickael-kerjean/filestash || true
-cp -R plg_backend_csit filestash/server/plugin/
+rm -rf filestash/server/plugin/plg_backend_s3sts || true
+cp -R plg_backend_s3sts filestash/server/plugin/
 
 cat > filestash/server/plugin/index.go <<EOF
 package plugin
@@ -16,7 +17,7 @@ import (
     _ "github.com/mickael-kerjean/filestash/server/plugin/plg_security_svg"
     . "github.com/mickael-kerjean/filestash/server/common"
 
-    _ "github.com/mickael-kerjean/filestash/server/plugin/plg_backend_csit"
+    _ "github.com/mickael-kerjean/filestash/server/plugin/plg_backend_s3sts"
 )
 
 func init() {
