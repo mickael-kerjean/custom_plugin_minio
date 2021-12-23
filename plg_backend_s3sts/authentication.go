@@ -26,6 +26,7 @@ func init() {
 	openIDConfig()
 	openIDClientID()
 	openIDClientSecret()
+	openIDClientScopes()
 }
 
 var openIDConfig = func() string {
