@@ -26,6 +26,7 @@ func init() {
 	openIDConfig()
 	openIDClientID()
 	openIDClientSecret()
+	openIDClientScopes()
 }
 
 var openIDConfig = func() string {
@@ -67,6 +68,19 @@ var openIDClientSecret = func() string {
 	}).String()
 }
 
+var openIDClientScopes = func() string {
+	return Config.Get("s3sts.openid.scopes").Schema(func(f *FormElement) *FormElement {
+		if f == nil {
+			f = &FormElement{}
+		}
+		f.Default = "openid"
+		f.Name = "scopes"
+		f.Type = "text"
+		f.Placeholder = "comma separated list of scopes"
+		return f
+	}).String()
+}
+
 func OpenID() *oauth2.Config {
 	return &oauth2.Config{
 		RedirectURL:  fmt.Sprintf("https://%s/login", Config.Get("general.host").String()),
@@ -76,6 +90,7 @@ func OpenID() *oauth2.Config {
 			AuthURL:  OpenIDAuthenticationEndpoint,
 			TokenURL: OpenIDTokenEndpoint,
 		},
+		Scopes: strings.Split(openIDClientScopes(), ","),
 	}
 }
 
