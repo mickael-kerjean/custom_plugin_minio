@@ -73,6 +73,7 @@ cd ..
 
 #cd ..
 BUILD_DATE=$(date '+%Y%m%d-%H%M')
+docker pull machines/filestash
 docker pull $USER/filestash
 docker build -t $USER/filestash .
 docker tag $USER/filestash $USER/filestash:$BUILD_DATE
