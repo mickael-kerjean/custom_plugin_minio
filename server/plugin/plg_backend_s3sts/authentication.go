@@ -26,6 +26,8 @@ func init() {
 	openIDConfig()
 	openIDClientID()
 	openIDClientSecret()
+	openIDClientScopes()
+	openIDRedirectHost()
 }
 
 var openIDConfig = func() string {
@@ -67,15 +69,47 @@ var openIDClientSecret = func() string {
 	}).String()
 }
 
+var openIDClientScopes = func() string {
+	return Config.Get("s3sts.openid.scopes").Schema(func(f *FormElement) *FormElement {
+		if f == nil {
+			f = &FormElement{}
+		}
+		f.Default = "openid"
+		f.Name = "scopes"
+		f.Type = "text"
+		f.Placeholder = "comma separated list of scopes"
+		return f
+	}).String()
+}
+
+var openIDRedirectHost = func() string {
+	return Config.Get("s3sts.openid.redirect_host").Schema(func(f *FormElement) *FormElement {
+		if f == nil {
+			f = &FormElement{}
+		}
+		f.Default = ""
+		f.Name = "redirect_host"
+		f.Type = "text"
+		f.Placeholder = "hostname for redirect url"
+		return f
+	}).String()
+}
+
 func OpenID() *oauth2.Config {
+	hostname := openIDRedirectHost()
+	if hostname == "" {
+		hostname = Config.Get("general.host").String()
+	}
+
 	return &oauth2.Config{
-		RedirectURL:  fmt.Sprintf("https://%s/login", Config.Get("general.host").String()),
+		RedirectURL:  fmt.Sprintf("https://%s/login", hostname),
 		ClientID:     openIDClientID(),
 		ClientSecret: openIDClientSecret(),
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  OpenIDAuthenticationEndpoint,
 			TokenURL: OpenIDTokenEndpoint,
 		},
+		Scopes: strings.Split(openIDClientScopes(), ","),
 	}
 }
 
@@ -125,30 +159,30 @@ func OAuth2Authenticate(code string) (string, error) {
 		Log.Warning("oauth2::error - token is not valid")
 		return "", ErrNotValid
 	}
-	Log.Debug("oauth2 - token[%s]", token.AccessToken)
-	return token.AccessToken, nil
+	Log.Debug("oauth2 - id_token[%s]", token.Extra("id_token").(string))
+	return token.Extra("id_token").(string), nil
 }
 
-func OAuth2IsAuthenticated(access_token string) error {
-	Log.Info("oauth2::session")
-	req, err := http.NewRequest("GET", OpenIDUserInfoEndpoint, nil)
-	if err != nil {
-		Log.Error("oauth2::http::new %+v", err)
-		return err
-	}
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", access_token))
-	resp, err := HTTPClient.Do(req)
-	if err != nil {
-		Log.Error("oauth2::http::do %+v", err)
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		Log.Error("oauth2::http::status %d", resp.StatusCode)
-		return NewError(HTTPFriendlyStatus(resp.StatusCode), resp.StatusCode)
-	}
-	return nil
-}
+//func OAuth2IsAuthenticated(access_token string) error {
+//	Log.Info("oauth2::session")
+//	req, err := http.NewRequest("GET", OpenIDUserInfoEndpoint, nil)
+//	if err != nil {
+//		Log.Error("oauth2::http::new %+v", err)
+//		return err
+//	}
+//	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", access_token))
+//	resp, err := HTTPClient.Do(req)
+//	if err != nil {
+//		Log.Error("oauth2::http::do %+v", err)
+//		return err
+//	}
+//	defer resp.Body.Close()
+//	if resp.StatusCode != http.StatusOK {
+//		Log.Error("oauth2::http::status %d", resp.StatusCode)
+//		return NewError(HTTPFriendlyStatus(resp.StatusCode), resp.StatusCode)
+//	}
+//	return nil
+//}
 
 func OpenIDCreateNonce() string {
 	nonce, _ := EncryptString(SECRET_KEY_DERIVATE_FOR_NONCE, time.Now().UTC().String())

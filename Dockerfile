@@ -1,7 +1,7 @@
 FROM ubuntu:21.04
-MAINTAINER mickael@kerjean.me
+MAINTAINER alexanghh@gmail.com
 
-ENV TZ Europe/Berlin
+ENV TZ Asia/Singapore
 ENV DEBIAN_FRONTEND noninteractive
 
 COPY filestash/dist/ /app/
