@@ -320,6 +320,7 @@ class ExistingThingComponent extends React.Component {
                             onClickRename={this.onRenameRequest.bind(this)}
                             onClickDelete={this.onDeleteRequest.bind(this)}
                             onClickShare={this.onShareRequest.bind(this)}
+                            can_download={window.CONFIG.enable_inline_download === true}
                             is_renaming={this.state.is_renaming}
                             can_rename={this.props.metadata.can_rename !== false}
                             can_delete={this.props.metadata.can_delete !== false}
@@ -401,7 +402,7 @@ class Filename extends React.Component {
                 <span className="file-details">
                     <NgIf cond={this.props.is_renaming === false} type="inline">
                         {
-                            fileWithoutExtension
+                            <span className="filename">{fileWithoutExtension}</span>
                         }{
                             this.props.hide_extension ? null :
                                 <span className="extension">{fileExtension}</span>
@@ -451,10 +452,14 @@ const ActionButton = (props) => {
 
     return (
         <div className="component_action">
-            <Icon
-                name="download"
-                onClick={onDownload}
-                className="component_updater--icon" />
+            <NgIf
+                type="inline"
+                cond={props.can_download !== false}>
+                <Icon
+                    name="download"
+                    onClick={onDownload}
+                    className="component_updater--icon" />
+            </NgIf>
             <NgIf
                 type="inline"
                 cond={props.can_rename !== false && props.is_renaming === false}>
@@ -550,7 +555,7 @@ class Image extends React.Component {
                 <Icon name={this.props.icon} />
                 <NgIf
                     className="info_extension"
-                    cond={!!ext && this.props.icon === "file" && this.props.hide_extension !== true}>
+                    cond={!!ext && this.props.view === "grid" && this.props.icon === "file" && this.props.hide_extension !== true}>
                     <span>{ext}</span>
                 </NgIf>
             </span>
