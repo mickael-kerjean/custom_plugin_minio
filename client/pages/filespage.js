@@ -70,8 +70,8 @@ export class FilesPageComponent extends React.Component {
         this.props.subscribe("file.rename.multiple", onMultiRename.bind(this));
         this.props.subscribe("file.delete", onDelete.bind(this));
         this.props.subscribe("file.delete.multiple", onMultiDelete.bind(this));
-        this.props.subscribe("file.download.multiple", onMultiDownload.bind(this));
         this.props.subscribe("file.download", onDownload.bind(this));
+        this.props.subscribe("file.download.multiple", onMultiDownload.bind(this));
         this.props.subscribe("file.refresh", this.onRefresh.bind(this));
         this.props.subscribe("file.select", this.toggleSelect.bind(this));
         window.addEventListener("keydown", this.toggleHiddenFilesVisibilityonCtrlK);
