@@ -26,6 +26,8 @@ func init() {
 	openIDConfig()
 	openIDClientID()
 	openIDClientSecret()
+	openIDClientScopes()
+	openIDRedirectHost()
 }
 
 var openIDConfig = func() string {
@@ -63,6 +65,32 @@ var openIDClientSecret = func() string {
 		f.Name = "client_secret"
 		f.Type = "text"
 		f.Placeholder = "client_secret"
+		return f
+	}).String()
+}
+
+var openIDClientScopes = func() string {
+	return Config.Get("s3sts.openid.scopes").Schema(func(f *FormElement) *FormElement {
+		if f == nil {
+			f = &FormElement{}
+		}
+		f.Default = "openid"
+		f.Name = "scopes"
+		f.Type = "text"
+		f.Placeholder = "comma separated list of scopes"
+		return f
+	}).String()
+}
+
+var openIDRedirectHost = func() string {
+	return Config.Get("s3sts.openid.redirect_host").Schema(func(f *FormElement) *FormElement {
+		if f == nil {
+			f = &FormElement{}
+		}
+		f.Default = ""
+		f.Name = "redirect_host"
+		f.Type = "text"
+		f.Placeholder = "hostname for redirect url"
 		return f
 	}).String()
 }
