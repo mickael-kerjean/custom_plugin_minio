@@ -4,6 +4,8 @@ import requests
 import base64
 import json
 import hashlib
+from datetime import datetime
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -42,6 +44,7 @@ for obj in objects:
     logging.info('Processing new put file event %s: %s', unique_id, path)
 
     size = obj.size
+    epoch = obj.last_modified.timestamp()
 
     base64_encoded_data = ""
     # Get data of an object.
@@ -53,7 +56,7 @@ for obj in objects:
 
     logging.info('Encoding %s object into base64 string', unique_id)
 
-    request_json = {'data' : base64_encoded_data, 'path' : path, 'size' : size}
+    request_json = {'data' : base64_encoded_data, 'path' : path, 'size' : size, "epoch": epoch}
     try:
       response = requests.put('http://localhost:9200/minio_file/_doc/' + unique_id + '?pipeline=attachment', data = json.dumps(request_json), headers = request_headers)
       logging.info('Trigger ingest attachment pipeline %s return status_code: %s', unique_id, response.status_code)
